@@ -59,8 +59,7 @@ e20 = safe_get(indicators.get("EMA20"))
 e50 = safe_get(indicators.get("EMA50"))
 rsi = safe_get(indicators.get("RSI(14)"))
 boll = safe_get(indicators.get("Bollinger Bands"))
-trend = safe_get(indicators.get("Trend"))
-    }
+trend = indicators.get("Trend", {"value": "?", "signal": "?"})
     try:
         r = requests.get(url, headers=headers)
         soup = BeautifulSoup(r.text, "html.parser")
