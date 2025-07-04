@@ -12,7 +12,7 @@ from datetime import datetime
 TOKEN = "7869769364:AAGWDK4orRgxQDcjfEHScbfExgIt_Ti8ARs"
 ADMIN_ID = 6964741705
 ADMIN_PASSWORD = "admin"
-WALLET_ID = "1125130202"
+WALLET_ID = "6964741705"
 SUBSCRIPTION_IMAGE = "subscription.jpg"
 USERS_FILE = "users.json"
 TEXTS_FILE = "texts.json"
