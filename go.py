@@ -52,14 +52,14 @@ def get_analysis():
     return "Strong Sell"
 
 def get_indicator_details():
-    url = "https://www.investing.com/currencies/eur-usd-technical"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    indicators = {
-        "EMA20": None,
-        "EMA50": None,
-        "RSI(14)": None,
-        "Bollinger Bands": None,
-        "Trend": None
+def safe_get(indicator):
+    return indicator if indicator else {"value": "?", "signal": "?"}
+
+e20 = safe_get(indicators.get("EMA20"))
+e50 = safe_get(indicators.get("EMA50"))
+rsi = safe_get(indicators.get("RSI(14)"))
+boll = safe_get(indicators.get("Bollinger Bands"))
+trend = safe_get(indicators.get("Trend"))
     }
     try:
         r = requests.get(url, headers=headers)
@@ -142,6 +142,124 @@ def get_recommendation_message(signal, indicators):
 
 ━━━━━━━━━━━━━━
 
+# أدوات المساعدة
+
+def load_users():
+    with open(USERS_FILE, "r") as f:
+        return json.load(f)
+
+def save_users(data):
+    with open(USERS_FILE, "w") as f:
+        json.dump(data, f)
+
+def get_analysis():
+    return "Strong Sell"
+
+def get_indicator_details():
+    def safe_get(indicator):
+        return indicator if indicator else {"value": "?", "signal": "?"}
+
+    url = "https://www.investing.com/currencies/eur-usd-technical"
+    headers = {"User-Agent": "Mozilla/5.0"}
+
+    indicators = {
+        "EMA20": None,
+        "EMA50": None,
+        "RSI(14)": None,
+        "Bollinger Bands": None,
+        "Trend": None
+    }
+
+    try:
+        r = requests.get(url, headers=headers)
+        soup = BeautifulSoup(r.text, "html.parser")
+        table = soup.find("table", class_="technicalIndicatorsTbl")
+        rows = table.find_all("tr")[1:]
+        for row in rows:
+            cols = row.find_all("td")
+            if len(cols) >= 3:
+                name = cols[0].text.strip()
+                value = cols[1].text.strip()
+                signal = cols[2].text.strip()
+                if name in indicators:
+                    indicators[name] = {"value": value, "signal": signal}
+    except Exception as e:
+        print("خطأ في جلب المؤشرات:", e)
+
+    # تأكد من تعويض المؤشرات الناقصة
+    return {
+        "EMA20": safe_get(indicators.get("EMA20")),
+        "EMA50": safe_get(indicators.get("EMA50")),
+        "RSI(14)": safe_get(indicators.get("RSI(14)")),
+        "Bollinger Bands": safe_get(indicators.get("Bollinger Bands")),
+        "Trend": safe_get(indicators.get("Trend"))
+    }
+
+def explain_indicator(name, value, signal):
+    try:
+        val = float(value)
+    except:
+        return "🔍 لا يمكن تفسير القيمة."
+    if "EMA" in name:
+        if signal == "Buy":
+            return "🔍 السعر أعلى من المتوسط → الاتجاه صاعد ✅"
+        elif signal == "Sell":
+            return "🔍 السعر أقل من المتوسط → الاتجاه هابط 🔻"
+        else:
+            return "🔍 قريب من المتوسط → سوق غير واضح ⏳"
+    if "RSI" in name:
+        if val < 30:
+            return "🔍 RSI منخفض → تشبّع بيعي → احتمال صعود 🔼"
+        elif val > 70:
+            return "🔍 RSI مرتفع → تشبّع شرائي → احتمال هبوط 🔽"
+        else:
+            return "🔍 RSI طبيعي → لا ضغط حالياً 🔁"
+    if "Bollinger" in name:
+        if signal == "Buy":
+            return "🔍 قريب من الحد السفلي → ارتداد صعودي محتمل 🔼"
+        elif signal == "Sell":
+            return "🔍 قريب من الحد العلوي → ضغط بيعي 🔽"
+        else:
+            return "🔍 داخل النطاق → لا ضغط حالي 🔍"
+    return "🔍 لا يوجد تفسير."
+
+def explain_trend(signal):
+    if signal == "Buy":
+        return "🔍 السوق في اتجاه صاعد حالياً ✅"
+    elif signal == "Sell":
+        return "🔍 السوق في اتجاه هابط حالياً 🔻"
+    elif signal == "Neutral":
+        return "🔍 لا يوجد اتجاه واضح (سوق متذبذب) ⏳"
+    return "🔍 لا يمكن تفسير الاتجاه"
+
+def get_recommendation_message(signal, indicators):
+    emoji_map = {
+        "Buy": "🟢", "Strong Buy": "🟢",
+        "Sell": "🔴", "Strong Sell": "🔴",
+        "Neutral": "🟡"
+    }
+    explain_map = {
+        "Buy": "📈 المؤشرات تشير إلى اتجاه صاعد → شراء",
+        "Strong Buy": "📈 المؤشرات بقوة لصالح الشراء",
+        "Sell": "📉 المؤشرات تشير إلى هبوط → بيع",
+        "Strong Sell": "📉 المؤشرات بقوة لصالح البيع",
+        "Neutral": "⏳ السوق غير واضح → انتظار"
+    }
+
+    now = datetime.now().strftime("%I:%M %p")
+
+    e20 = indicators.get("EMA20", {"value": "?", "signal": "?"})
+    e50 = indicators.get("EMA50", {"value": "?", "signal": "?"})
+    rsi = indicators.get("RSI(14)", {"value": "?", "signal": "?"})
+    boll = indicators.get("Bollinger Bands", {"value": "?", "signal": "?"})
+    trend = indicators.get("Trend", {"value": "?", "signal": "?"})
+
+    msg = f"""📊 توصية التداول لزوج EUR/USD:
+
+🔸 التوصية النهائية: {signal} {emoji_map.get(signal, '')}
+
+━━━━━━━━━━━━━━
+
 📈 المتوسطات المتحركة:
 • EMA20 = {e20["value"]} → {e20["signal"]}
 {explain_indicator("EMA20", e20["value"], e20["signal"])}
@@ -164,12 +282,11 @@ def get_recommendation_message(signal, indicators):
 ━━━━━━━━━━━━━━
 
 💡 خلاصة التحليل:
-{explain.get(signal, 'لا يوجد تفسير.')}
+{explain_map.get(signal, 'لا يوجد تفسير.')}
 
 📅 توقيت التوصية: {now}
 """
     return msg
-
 # التوصيات التلقائية
 def send_recommendations():
     while True:
