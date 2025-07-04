@@ -114,26 +114,48 @@ def explain_trend(signal):
         return "🔍 لا يوجد اتجاه واضح (سوق متذبذب) ⏳"
     return "🔍 لا يمكن تفسير الاتجاه"
 
+from datetime import datetime
+
 def get_recommendation_message(signal, indicators):
     emoji_map = {
-        "Buy": "🟢", "Strong Buy": "🟢",
-        "Sell": "🔴", "Strong Sell": "🔴",
-        "Neutral": "🟡"
+        "Buy": "[BUY]",
+        "Strong Buy": "[STRONG BUY]",
+        "Sell": "[SELL]",
+        "Strong Sell": "[STRONG SELL]",
+        "Neutral": "[NEUTRAL]"
     }
+
     explain = {
-        "Buy": "📈 المؤشرات تشير إلى اتجاه صاعد → شراء",
-        "Strong Buy": "📈 المؤشرات بقوة لصالح الشراء",
-        "Sell": "📉 المؤشرات تشير إلى هبوط → بيع",
-        "Strong Sell": "📉 المؤشرات بقوة لصالح البيع",
-        "Neutral": "⏳ السوق غير واضح → انتظار"
+        "Buy": "المؤشرات تشير إلى اتجاه صاعد - شراء",
+        "Strong Buy": "المؤشرات بقوة لصالح الشراء",
+        "Sell": "المؤشرات تشير إلى هبوط - بيع",
+        "Strong Sell": "المؤشرات بقوة لصالح البيع",
+        "Neutral": "السوق غير واضح - انتظار"
     }
 
     now = datetime.now().strftime("%I:%M %p")
+
     e20 = indicators.get("EMA20", {"value": "?", "signal": "?"})
     e50 = indicators.get("EMA50", {"value": "?", "signal": "?"})
     rsi = indicators.get("RSI(14)", {"value": "?", "signal": "?"})
     boll = indicators.get("Bollinger Bands", {"value": "?", "signal": "?"})
     trend = indicators.get("Trend", {"value": "?", "signal": "?"})
+
+    msg = f"""توصية التداول لزوج EUR/USD:
+الوقت: {now}
+
+التوصية النهائية: {signal} {emoji_map.get(signal, '')}
+{explain.get(signal, '')}
+
+تفاصيل المؤشرات:
+- EMA20: {e20['value']} → {e20['signal']}
+- EMA50: {e50['value']} → {e50['signal']}
+- RSI(14): {rsi['value']} → {rsi['signal']}
+- Bollinger Bands: {boll['value']} → {boll['signal']}
+- الاتجاه العام: {trend['signal']}
+"""
+
+    return msg
 
     msg = f"""📊 توصية التداول لزوج EUR/USD:
 
