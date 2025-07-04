@@ -1,0 +1,60 @@
+
+# تسجيل الدخول وإنشاء حساب جديد
+@bot.message_handler(commands=["start"])
+def start(message):
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("انشاء حساب", callback_data="register"))
+    markup.add(types.InlineKeyboardButton("تسجيل الدخول", callback_data="login"))
+    bot.send_message(message.chat.id, "اهلا بك، اختر احد الخيارات:", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data in ["register", "login"])
+def handle_auth(call):
+    user_id = call.from_user.id
+    if call.data == "register":
+        bot.send_message(user_id, "ادخل اسمك:")
+        bot.register_next_step_handler_by_chat_id(user_id, get_name)
+    elif call.data == "login":
+        bot.send_message(user_id, "ادخل الايميل:")
+        bot.register_next_step_handler_by_chat_id(user_id, do_login)
+
+def get_name(message):
+    name = message.text
+    bot.send_message(message.chat.id, "ادخل الايميل:")
+    bot.register_next_step_handler(message, lambda m: get_email(m, name))
+
+def get_email(message, name):
+    email = message.text
+    bot.send_message(message.chat.id, "ادخل كلمة المرور:")
+    bot.register_next_step_handler(message, lambda m: finish_register(m, name, email))
+
+def finish_register(message, name, email):
+    password = message.text
+    user_id = message.from_user.id
+    users = load_users()
+    users[str(user_id)] = {
+        "name": name,
+        "email": email,
+        "password": password,
+        "subscribed": False
+    }
+    save_users(users)
+    SESSIONS[user_id] = True
+    send_subscription_info(user_id)
+
+def do_login(message):
+    email = message.text
+    bot.send_message(message.chat.id, "ادخل كلمة المرور:")
+    bot.register_next_step_handler(message, lambda m: finish_login(m, email))
+
+def finish_login(message, email):
+    password = message.text
+    user_id = message.from_user.id
+    users = load_users()
+    for uid, info in users.items():
+        if info["email"] == email and info["password"] == password:
+            SESSIONS[user_id] = True
+            bot.send_message(user_id, "تم تسجيل الدخول بنجاح.")
+            if not info.get("subscribed", False):
+                send_subscription_info(user_id)
+            return
+    bot.send_message(user_id, "فشل تسجيل الدخول.")

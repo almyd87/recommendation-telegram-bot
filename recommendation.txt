@@ -1,0 +1,151 @@
+
+import requests
+import time
+from bs4 import BeautifulSoup
+from datetime import datetime
+
+def get_analysis():
+    return "Strong Sell"  # محاكاة فقط
+
+def get_indicator_details():
+    url = "https://www.investing.com/currencies/eur-usd-technical"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    indicators = {
+        "EMA20": None,
+        "EMA50": None,
+        "RSI(14)": None,
+        "Bollinger Bands": None,
+        "Trend": None
+    }
+    try:
+        r = requests.get(url, headers=headers)
+        soup = BeautifulSoup(r.text, "html.parser")
+        table = soup.find("table", class_="technicalIndicatorsTbl")
+        rows = table.find_all("tr")[1:]
+        for row in rows:
+            cols = row.find_all("td")
+            if len(cols) >= 3:
+                name = cols[0].text.strip()
+                value = cols[1].text.strip()
+                signal = cols[2].text.strip()
+                if name in indicators:
+                    indicators[name] = {"value": value, "signal": signal}
+    except Exception as e:
+        print("خطأ في جلب المؤشرات:", e)
+    return indicators
+
+def explain_indicator(name, value, signal):
+    try:
+        val = float(value)
+    except:
+        return "🔍 لا يمكن تفسير القيمة."
+    if "EMA" in name:
+        if signal == "Buy":
+            return "🔍 السعر أعلى من المتوسط → الاتجاه صاعد ✅"
+        elif signal == "Sell":
+            return "🔍 السعر أقل من المتوسط → الاتجاه هابط 🔻"
+        else:
+            return "🔍 قريب من المتوسط → سوق غير واضح ⏳"
+    if "RSI" in name:
+        if val < 30:
+            return "🔍 RSI منخفض → تشبّع بيعي → احتمال صعود 🔼"
+        elif val > 70:
+            return "🔍 RSI مرتفع → تشبّع شرائي → احتمال هبوط 🔽"
+        else:
+            return "🔍 RSI طبيعي → لا ضغط حالياً 🔁"
+    if "Bollinger" in name:
+        if signal == "Buy":
+            return "🔍 قريب من الحد السفلي → ارتداد صعودي محتمل 🔼"
+        elif signal == "Sell":
+            return "🔍 قريب من الحد العلوي → ضغط بيعي 🔽"
+        else:
+            return "🔍 داخل النطاق → لا ضغط حالي 🔍"
+    return "🔍 لا يوجد تفسير."
+
+def explain_trend(signal):
+    if signal == "Buy":
+        return "🔍 السوق في اتجاه صاعد حالياً ✅"
+    elif signal == "Sell":
+        return "🔍 السوق في اتجاه هابط حالياً 🔻"
+    elif signal == "Neutral":
+        return "🔍 لا يوجد اتجاه واضح (سوق متذبذب) ⏳"
+    return "🔍 لا يمكن تفسير الاتجاه"
+
+def get_recommendation_message(signal, indicators):
+    emoji_map = {
+        "Buy": "🟢", "Strong Buy": "🟢",
+        "Sell": "🔴", "Strong Sell": "🔴",
+        "Neutral": "🟡"
+    }
+    explain = {
+        "Buy": "📈 المؤشرات تشير إلى اتجاه صاعد → شراء",
+        "Strong Buy": "📈 المؤشرات بقوة لصالح الشراء",
+        "Sell": "📉 المؤشرات تشير إلى هبوط → بيع",
+        "Strong Sell": "📉 المؤشرات بقوة لصالح البيع",
+        "Neutral": "⏳ السوق غير واضح → انتظار"
+    }
+
+    now = datetime.now().strftime("%I:%M %p")
+    e20 = indicators.get("EMA20", {"value": "?", "signal": "?"})
+    e50 = indicators.get("EMA50", {"value": "?", "signal": "?"})
+    rsi = indicators.get("RSI(14)", {"value": "?", "signal": "?"})
+    boll = indicators.get("Bollinger Bands", {"value": "?", "signal": "?"})
+    trend = indicators.get("Trend", {"value": "?", "signal": "?"})
+
+    msg = f"""📊 توصية التداول لزوج EUR/USD:
+
+🔸 التوصية النهائية: {signal} {emoji_map.get(signal, '')}
+
+━━━━━━━━━━━━━━
+
+📈 المتوسطات المتحركة:
+• EMA20 = {e20["value"]} → {e20["signal"]}
+{explain_indicator("EMA20", e20["value"], e20["signal"])}
+
+• EMA50 = {e50["value"]} → {e50["signal"]}
+{explain_indicator("EMA50", e50["value"], e50["signal"])}
+
+📊 مؤشر القوة النسبية (RSI 14):
+• RSI = {rsi["value"]} → {rsi["signal"]}
+{explain_indicator("RSI(14)", rsi["value"], rsi["signal"])}
+
+📉 مؤشر بولينجر باند:
+• Bollinger Bands = {boll["value"]} → {boll["signal"]}
+{explain_indicator("Bollinger Bands", boll["value"], boll["signal"])}
+
+📈 مؤشر الاتجاه (Trend):
+• Trend = {trend["value"]} → {trend["signal"]}
+{explain_trend(trend["signal"])}
+
+━━━━━━━━━━━━━━
+
+💡 خلاصة التحليل:
+{explain.get(signal, 'لا يوجد تفسير.')}
+
+📅 توقيت التوصية: {now}
+"""
+    return msg
+
+def send_recommendations():
+    while True:
+        signal = get_analysis()
+        indicators = get_indicator_details()
+        message = get_recommendation_message(signal, indicators)
+        users = load_users()
+        for uid, info in users.items():
+            if info.get("subscribed"):
+                try:
+                    bot.send_message(int(uid), message)
+                    if "Buy" in signal:
+                        bot.send_message(int(uid), "🚀🟢")
+                    elif "Sell" in signal:
+                        bot.send_message(int(uid), "📉🔴")
+                    else:
+                        bot.send_message(int(uid), "⏳🟡")
+                except Exception as e:
+                    print("فشل الإرسال:", e)
+        time.sleep(60)
+
+# تشغيل التوصيات في الخلفية
+import threading
+threading.Thread(target=send_recommendations).start()

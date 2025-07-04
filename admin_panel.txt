@@ -1,0 +1,28 @@
+
+@bot.message_handler(commands=["admin"])
+def admin_login(message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    bot.send_message(message.chat.id, "🔐 أدخل كلمة المرور:")
+    bot.register_next_step_handler(message, check_admin_pass)
+
+def check_admin_pass(message):
+    if message.text == ADMIN_PASSWORD:
+        show_admin_panel(message.chat.id)
+    else:
+        bot.send_message(message.chat.id, "❌ كلمة مرور خاطئة.")
+
+def show_admin_panel(chat_id):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add("✅ تفعيل مستخدم", "📜 عرض الطلبات")
+    markup.add("💰 تغيير السعر", "💼 تغيير المحفظة")
+    markup.add("📝 تغيير الرسالة", "📤 إرسال رسالة")
+    markup.add("📋 قائمة المشتركين", "📊 التحكم بالتوصيات")
+    markup.add("🔓 تسجيل الخروج")
+    bot.send_message(chat_id, "📋 لوحة تحكم المطور:", reply_markup=markup)
+
+@bot.message_handler(func=lambda m: m.text == "📋 قائمة المشتركين")
+def list_users(message):
+    users = load_users()
+    for uid, data in users.items():
+        bot.send_message(message.chat.id, f"👤 {data['name']} | {data['email']} | اشتراك: {'✅' if data['subscribed'] else '❌'}")
